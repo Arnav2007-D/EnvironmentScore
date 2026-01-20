@@ -171,25 +171,73 @@ const App = () => {
   
   // Include all your existing functions here (I'm keeping them brief for space)
   const handleFileUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setEvidenceFile(file);
-      const reader = new FileReader();
-      reader.onload = (e) => setEvidencePreview(e.target.result);
-      reader.readAsDataURL(file);
+  const file = e.target.files[0];
+  if (file) {
+    // Check file size based on type
+    const maxSizePhoto = 5 * 1024 * 1024; // 5MB for photos
+    const maxSizeVideo = 50 * 1024 * 1024; // 50MB for videos
+    const maxSize = evidenceType === 'photo' ? maxSizePhoto : maxSizeVideo;
+    
+    if (file.size > maxSize) {
+      const maxSizeMB = maxSize / (1024 * 1024);
+      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+      alert(`File too large! Maximum size is ${maxSizeMB}MB. Your file is ${fileSizeMB}MB.`);
+      // Clear the file input
+      e.target.value = '';
+      return;
     }
-  };
+    
+    // Check file type
+    const validPhotoTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+    const validTypes = evidenceType === 'photo' ? validPhotoTypes : validVideoTypes;
+    
+    if (!validTypes.includes(file.type)) {
+      alert(`Invalid file type! Please upload ${evidenceType === 'photo' ? 'an image' : 'a video'} file.`);
+      e.target.value = '';
+      return;
+    }
+    
+    setEvidenceFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setEvidencePreview(e.target.result);
+    reader.readAsDataURL(file);
+  }
+};
 
   const handleLocationCheckIn = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
+  setIsProcessing(true);
+  
+  // Step 1: Check if browser supports Geolocation
+  if (!navigator.geolocation) {
+    alert('Geolocation is not supported by your browser');
+    setIsProcessing(false);
+    return;
+  }
+  
+  // Step 2: Request real location from browser
+  navigator.geolocation.getCurrentPosition(
+    // Success callback - location found!
+    (position) => {
       setGpsLocation({
-        lat: (40.7128 + (Math.random() - 0.5) * 0.1).toFixed(4),
-        lng: (-74.0060 + (Math.random() - 0.5) * 0.1).toFixed(4)
+        lat: position.coords.latitude.toFixed(4),
+        lng: position.coords.longitude.toFixed(4)
       });
       setIsProcessing(false);
-    }, 1500);
-  };
+    },
+    // Error callback - something went wrong
+    (error) => {
+      alert('Error getting location: ' + error.message);
+      setIsProcessing(false);
+    },
+    // Options for location request
+    {
+      enableHighAccuracy: true,  // Use GPS if available (more accurate)
+      timeout: 10000,             // Wait max 10 seconds
+      maximumAge: 0               // Don't use cached location
+    }
+  );
+};
 
   const simulateAIVerification = () => Math.random() > 0.1;
 
@@ -262,13 +310,14 @@ const App = () => {
             
             <div className="flex items-center space-x-4">
               {!isAdmin ? (
-                <button
+               <button 
                   onClick={() => setShowLeaderboard(!showLeaderboard)}
-                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
+                  aria-label={showLeaderboard ? 'Hide school leaderboard' : 'Show school leaderboard'}
+                  aria-expanded={showLeaderboard}
                 >
-                  {showLeaderboard ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  {showLeaderboard ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
                   <span>{showLeaderboard ? 'Hide' : 'View'} School Rankings</span>
-                </button>
+              </button>
               ) : (
                 <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-3 py-2 rounded-lg">
                   <Settings className="h-4 w-4" />
@@ -529,10 +578,22 @@ const App = () => {
             <h2 className="text-xl font-bold text-gray-900 mb-6">Log Your Eco-Action</h2>
             <form onSubmit={handleSubmitAction} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Eco-Action</label>
-                <select
-                  value={selectedAction}
-                  onChange={(e) => {
+                <label htmlFor="eco-action-select" className="block text-sm font-medium text-gray-700 mb-2">
+                    Eco-Action
+                  </label>
+                  <select 
+                    id="eco-action-select"
+                    value={selectedAction} 
+                    onChange={...}
+                    aria-required="true"
+                    aria-describedby="eco-action-help"
+                  >
+                    <option value="">Select an eco-action</option>
+                    ...
+                  </select>
+                  <p id="eco-action-help" className="sr-only">
+                    Choose an environmental action to log. You'll earn points and save CO2.
+                  </p>
                     setSelectedAction(e.target.value);
                     const action = ecoActions.find(a => a.id === e.target.value);
                     if (action && action.requiresLocation) {
