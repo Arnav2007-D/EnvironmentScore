@@ -11,6 +11,7 @@ const App = () => {
   // Admin state
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminForm, setShowAdminForm] = useState(false);
   const adminPasscode = "green2025"; // Change this to your desired password
   
   // Existing state from your original app
@@ -80,11 +81,15 @@ const App = () => {
     if (adminPassword === adminPasscode) {
       setIsAdmin(true);
       setAdminPassword('');
+      setShowAdminForm(false);
+    } else {
+      alert('Incorrect password');
     }
   };
 
   const handleAdminLogout = () => {
     setIsAdmin(false);
+    setShowAdminForm(false);
   };
 
   const addSchoolRequest = (e) => {
@@ -167,77 +172,74 @@ const App = () => {
     }
   };
 
-  // ... (keep all your existing functions: handleFileUpload, handleLocationCheckIn, simulateAIVerification, handleSubmitAction, getActionIcon)
-  
-  // Include all your existing functions here (I'm keeping them brief for space)
   const handleFileUpload = (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    // Check file size based on type
-    const maxSizePhoto = 5 * 1024 * 1024; // 5MB for photos
-    const maxSizeVideo = 50 * 1024 * 1024; // 50MB for videos
-    const maxSize = evidenceType === 'photo' ? maxSizePhoto : maxSizeVideo;
-    
-    if (file.size > maxSize) {
-      const maxSizeMB = maxSize / (1024 * 1024);
-      const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      alert(`File too large! Maximum size is ${maxSizeMB}MB. Your file is ${fileSizeMB}MB.`);
-      // Clear the file input
-      e.target.value = '';
-      return;
+    const file = e.target.files[0];
+    if (file) {
+      // Check file size based on type
+      const maxSizePhoto = 5 * 1024 * 1024; // 5MB for photos
+      const maxSizeVideo = 50 * 1024 * 1024; // 50MB for videos
+      const maxSize = evidenceType === 'photo' ? maxSizePhoto : maxSizeVideo;
+      
+      if (file.size > maxSize) {
+        const maxSizeMB = maxSize / (1024 * 1024);
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`File too large! Maximum size is ${maxSizeMB}MB. Your file is ${fileSizeMB}MB.`);
+        // Clear the file input
+        e.target.value = '';
+        return;
+      }
+      
+      // Check file type
+      const validPhotoTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+      const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
+      const validTypes = evidenceType === 'photo' ? validPhotoTypes : validVideoTypes;
+      
+      if (!validTypes.includes(file.type)) {
+        alert(`Invalid file type! Please upload ${evidenceType === 'photo' ? 'an image' : 'a video'} file.`);
+        e.target.value = '';
+        return;
+      }
+      
+      setEvidenceFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => setEvidencePreview(e.target.result);
+      reader.readAsDataURL(file);
     }
-    
-    // Check file type
-    const validPhotoTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const validVideoTypes = ['video/mp4', 'video/webm', 'video/ogg'];
-    const validTypes = evidenceType === 'photo' ? validPhotoTypes : validVideoTypes;
-    
-    if (!validTypes.includes(file.type)) {
-      alert(`Invalid file type! Please upload ${evidenceType === 'photo' ? 'an image' : 'a video'} file.`);
-      e.target.value = '';
-      return;
-    }
-    
-    setEvidenceFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => setEvidencePreview(e.target.result);
-    reader.readAsDataURL(file);
-  }
-};
+  };
 
   const handleLocationCheckIn = () => {
-  setIsProcessing(true);
-  
-  // Step 1: Check if browser supports Geolocation
-  if (!navigator.geolocation) {
-    alert('Geolocation is not supported by your browser');
-    setIsProcessing(false);
-    return;
-  }
-  
-  // Step 2: Request real location from browser
-  navigator.geolocation.getCurrentPosition(
-    // Success callback - location found!
-    (position) => {
-      setGpsLocation({
-        lat: position.coords.latitude.toFixed(4),
-        lng: position.coords.longitude.toFixed(4)
-      });
+    setIsProcessing(true);
+    
+    // Step 1: Check if browser supports Geolocation
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
       setIsProcessing(false);
-    },
-    // Error callback - something went wrong
-    (error) => {
-      alert('Error getting location: ' + error.message);
-      setIsProcessing(false);
-    },
-    // Options for location request
-    {
-      enableHighAccuracy: true,  // Use GPS if available (more accurate)
-      timeout: 10000,             // Wait max 10 seconds
-      maximumAge: 0               // Don't use cached location
+      return;
     }
-  );
-};
+    
+    // Step 2: Request real location from browser
+    navigator.geolocation.getCurrentPosition(
+      // Success callback - location found!
+      (position) => {
+        setGpsLocation({
+          lat: position.coords.latitude.toFixed(4),
+          lng: position.coords.longitude.toFixed(4)
+        });
+        setIsProcessing(false);
+      },
+      // Error callback - something went wrong
+      (error) => {
+        alert('Error getting location: ' + error.message);
+        setIsProcessing(false);
+      },
+      // Options for location request
+      {
+        enableHighAccuracy: true,  // Use GPS if available (more accurate)
+        timeout: 10000,             // Wait max 10 seconds
+        maximumAge: 0               // Don't use cached location
+      }
+    );
+  };
 
   const simulateAIVerification = () => Math.random() > 0.1;
 
@@ -274,7 +276,7 @@ const App = () => {
             item.name === userSchool 
               ? { ...item, points: item.points + newAction.points, actions: item.actions + newAction.quantity, students: item.students + 1 }
               : item
-          ).sort((a, b) => b.points - a.points));
+          ).sort((a, b) => b.points - a.points).map((item, index) => ({ ...item, id: index + 1 })));
         }
         setSelectedAction('');
         setQuantity(1);
@@ -310,14 +312,15 @@ const App = () => {
             
             <div className="flex items-center space-x-4">
               {!isAdmin ? (
-               <button 
+                <button 
                   onClick={() => setShowLeaderboard(!showLeaderboard)}
                   aria-label={showLeaderboard ? 'Hide school leaderboard' : 'Show school leaderboard'}
                   aria-expanded={showLeaderboard}
+                  className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
                 >
                   {showLeaderboard ? <ChevronUp className="h-4 w-4" aria-hidden="true" /> : <ChevronDown className="h-4 w-4" aria-hidden="true" />}
                   <span>{showLeaderboard ? 'Hide' : 'View'} School Rankings</span>
-              </button>
+                </button>
               ) : (
                 <div className="flex items-center space-x-2 bg-red-100 text-red-800 px-3 py-2 rounded-lg">
                   <Settings className="h-4 w-4" />
@@ -325,6 +328,7 @@ const App = () => {
                   <button
                     onClick={handleAdminLogout}
                     className="ml-2 text-red-600 hover:text-red-800"
+                    aria-label="Log out of admin mode"
                   >
                     <LogOut className="h-4 w-4" />
                   </button>
@@ -333,30 +337,44 @@ const App = () => {
               
               {/* Admin Login Button (only visible when not admin) */}
               {!isAdmin && (
-                <div className="relative group">
-                  <button className="bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700">
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowAdminForm(!showAdminForm)}
+                    className="bg-gray-600 text-white p-2 rounded-lg hover:bg-gray-700"
+                    aria-label="Admin login"
+                  >
                     <Key className="h-4 w-4" />
                   </button>
                   {/* Admin Login Form (popup) */}
-                  <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-4 z-50 hidden group-hover:block">
-                    <form onSubmit={handleAdminLogin} className="space-y-3">
-                      <h3 className="font-medium text-gray-900">Admin Login</h3>
-                      <input
-                        type="password"
-                        value={adminPassword}
-                        onChange={(e) => setAdminPassword(e.target.value)}
-                        placeholder="Enter admin password"
-                        className="w-full p-2 border border-gray-300 rounded"
-                        required
-                      />
-                      <button
-                        type="submit"
-                        className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
-                      >
-                        Login
-                      </button>
-                    </form>
-                  </div>
+                  {showAdminForm && (
+                    <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-4 z-50 border border-gray-200">
+                      <form onSubmit={handleAdminLogin} className="space-y-3">
+                        <h3 className="font-medium text-gray-900">Admin Login</h3>
+                        <input
+                          type="password"
+                          value={adminPassword}
+                          onChange={(e) => setAdminPassword(e.target.value)}
+                          placeholder="Enter admin password"
+                          className="w-full p-2 border border-gray-300 rounded"
+                          required
+                          autoFocus
+                        />
+                        <button
+                          type="submit"
+                          className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700"
+                        >
+                          Login
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAdminForm(false)}
+                          className="w-full bg-gray-200 text-gray-700 py-2 rounded hover:bg-gray-300"
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -413,6 +431,7 @@ const App = () => {
                     <button
                       type="submit"
                       className="bg-green-600 text-white p-2 rounded hover:bg-green-700"
+                      aria-label="Add new school"
                     >
                       <Plus className="h-4 w-4" />
                     </button>
@@ -431,12 +450,14 @@ const App = () => {
                             <button
                               onClick={() => approveSchool(school)}
                               className="bg-green-100 text-green-700 p-1 rounded hover:bg-green-200"
+                              aria-label={`Approve ${school}`}
                             >
                               <UserCheck className="h-4 w-4" />
                             </button>
                             <button
                               onClick={() => rejectSchool(school)}
                               className="bg-red-100 text-red-700 p-1 rounded hover:bg-red-200"
+                              aria-label={`Reject ${school}`}
                             >
                               <UserX className="h-4 w-4" />
                             </button>
@@ -521,10 +542,8 @@ const App = () => {
           </div>
         )}
 
-        {/* Rest of your existing UI components go here */}
         {/* Impact Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          {/* ... your existing impact stats code ... */}
           <div className="bg-white rounded-xl p-6 shadow-sm border border-green-100">
             <div className="flex items-center justify-between">
               <div>
@@ -579,28 +598,25 @@ const App = () => {
             <form onSubmit={handleSubmitAction} className="space-y-6">
               <div>
                 <label htmlFor="eco-action-select" className="block text-sm font-medium text-gray-700 mb-2">
-                    Eco-Action
-                  </label>
-                  <select 
-                    id="eco-action-select"
-                    value={selectedAction} 
-                    onChange={...}
-                    aria-required="true"
-                    aria-describedby="eco-action-help"
-                  >
-                    <option value="">Select an eco-action</option>
-                    ...
-                  </select>
-                  <p id="eco-action-help" className="sr-only">
-                    Choose an environmental action to log. You'll earn points and save CO2.
-                  </p>
+                  Eco-Action
+                </label>
+                <select 
+                  id="eco-action-select"
+                  value={selectedAction} 
+                  onChange={(e) => {
                     setSelectedAction(e.target.value);
                     const action = ecoActions.find(a => a.id === e.target.value);
                     if (action && action.requiresLocation) {
                       setLocationCheckIn(true);
+                    } else {
+                      setLocationCheckIn(false);
+                      setGpsLocation(null);
                     }
                   }}
+                  aria-required="true"
+                  aria-describedby="eco-action-help"
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  disabled={isAdmin}
                 >
                   <option value="">Select an eco-action</option>
                   {ecoActions.map(action => (
@@ -609,15 +625,19 @@ const App = () => {
                     </option>
                   ))}
                 </select>
+                <p id="eco-action-help" className="sr-only">
+                  Choose an environmental action to log. You'll earn points and save CO2.
+                </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">School</label>
+                <label htmlFor="school-select" className="block text-sm font-medium text-gray-700 mb-2">School</label>
                 <select
+                  id="school-select"
                   value={userSchool}
                   onChange={(e) => setUserSchool(e.target.value)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
-                  disabled={isAdmin} // Admin can't submit actions
+                  disabled={isAdmin}
                 >
                   {approvedSchools.map(school => (
                     <option key={school} value={school}>
@@ -628,13 +648,14 @@ const App = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+                <label htmlFor="quantity-input" className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
                 <input
+                  id="quantity-input"
                   type="number"
                   min="1"
                   max="10"
                   value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
+                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
                   disabled={isAdmin}
                 />
@@ -647,7 +668,11 @@ const App = () => {
                     <div className="flex space-x-4 mb-3">
                       <button
                         type="button"
-                        onClick={() => setEvidenceType('photo')}
+                        onClick={() => {
+                          setEvidenceType('photo');
+                          setEvidenceFile(null);
+                          setEvidencePreview(null);
+                        }}
                         className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${
                           evidenceType === 'photo' 
                             ? 'bg-green-100 text-green-700 border border-green-300' 
@@ -659,7 +684,11 @@ const App = () => {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEvidenceType('video')}
+                        onClick={() => {
+                          setEvidenceType('video');
+                          setEvidenceFile(null);
+                          setEvidencePreview(null);
+                        }}
                         className={`flex items-center space-x-2 px-3 py-2 rounded-lg ${
                           evidenceType === 'video' 
                             ? 'bg-green-100 text-green-700 border border-green-300' 
@@ -693,12 +722,12 @@ const App = () => {
                           <img 
                             src={evidencePreview} 
                             alt="Evidence preview" 
-                            className="max-h-32 rounded-lg object-cover"
+                            className="max-h-32 rounded-lg object-cover w-full"
                           />
                         ) : (
                           <video 
                             src={evidencePreview} 
-                            className="max-h-32 rounded-lg"
+                            className="max-h-32 rounded-lg w-full"
                             controls
                           />
                         )}
@@ -712,7 +741,12 @@ const App = () => {
                         <input
                           type="checkbox"
                           checked={locationCheckIn}
-                          onChange={(e) => setLocationCheckIn(e.target.checked)}
+                          onChange={(e) => {
+                            setLocationCheckIn(e.target.checked);
+                            if (!e.target.checked) {
+                              setGpsLocation(null);
+                            }
+                          }}
                           className="rounded border-gray-300 text-green-600 focus:ring-green-500"
                         />
                         <span>Enable Location Check-in</span>
@@ -884,9 +918,11 @@ const App = () => {
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                           item.trend === 'up' 
                             ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
+                            : item.trend === 'down'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
                         }`}>
-                          {item.trend === 'up' ? '↗ Rising' : '↘ Declining'}
+                          {item.trend === 'up' ? '↗ Rising' : item.trend === 'down' ? '↘ Declining' : '→ Stable'}
                         </span>
                       </td>
                     </tr>
